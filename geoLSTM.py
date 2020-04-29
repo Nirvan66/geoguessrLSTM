@@ -30,26 +30,26 @@ class LossAndErrorPrintingCallback(tf.keras.callbacks.Callback):
     '''
     Custom callback used to save model every few epochs.
     '''
-    def __init__(self, gGuessr, saveFolder, saveEpoch):
+    def __init__(self, gGuessr, saveFolder, modelNumber):
         super(LossAndErrorPrintingCallback, self).__init__()
         self.gGuessr = gGuessr
-        self.saveEpoch =  saveEpoch
+        self.modelNumber =  modelNumber
         self.saveFolder = saveFolder
 
     def on_epoch_end(self, epoch, logs=None):
         '''
         Save model every few epochs
         '''
-        self.gGuessr.accuracy = round(float(logs['categorical_accuracy']),3)
-        if epoch%self.saveEpoch==0:
-            self.gGuessr.save(self.saveFolder)
+        self.gGuessr.accuracy = round(float(logs['loss']),3)
+        # if epoch%self.saveEpoch==0:
+        #     self.gGuessr.save(self.saveFolder)
 
     def on_train_end(self, logs={}):
         '''
         Save model at the end of training
         '''
         print("Training sucessfull!!")
-        self.gGuessr.save(self.saveFolder)
+        self.gGuessr.save(self.saveFolder, self.modelNumber)
 
 class Geoguessr:
     def __init__(self, model=None, accuracy=-1, useRestnet = True, 
@@ -125,22 +125,24 @@ class Geoguessr:
                     break
     
     def fit(self, trainFiles, dataDir, saveFolder, batchSize = 10, 
-            epochs = 20, saveEpoch=1, 
+            epochs = 20, 
             plot=False):
         # list of image file names
         # eg: <gridNo>+<lat,long>+<imageNo_date>.jpg 
         # eg: 60+48.4271513,-110.5611851+0_2009-06.jpg
-        callBack = [LossAndErrorPrintingCallback(self, saveFolder, saveEpoch)]
         print("Getting data from directory: {}".format(dataDir))
         accuracy = []
         loss = []
+        cnt = 0
         for X,y in self.dataGen(trainFiles, dataDir, batchSize=batchSize, infinite=False):
+            callBack = [LossAndErrorPrintingCallback(self, saveFolder, cnt)]
             print("Read {} points. Training now".format(len(X)))
             evalutaion = self.model.fit(X,y,
                                         epochs=epochs, steps_per_epoch = len(X),
                                         callbacks=callBack)
             accuracy += evalutaion.history['categorical_accuracy']
             loss += evalutaion.history['loss']
+            cnt += 1
         if plot:
             plt.plot(accuracy)
             plt.title('Model Accuracy')
@@ -154,14 +156,15 @@ class Geoguessr:
             plt.xlabel('Epoch')
             plt.show()
             
-    def save(self, saveFolder):
+    def save(self, saveFolder, modelNumber=0):
         if self.accuracy==-1:
             print("Cannot save untrained model!!!")
         else:
-            print("\nSaving model with accuracy {} at {}".format(self.accuracy, 
+            print("\nSaving model {} with loss {} at {}".format(modelNumber,
+                                                                self.accuracy, 
                                                                saveFolder))
-            print(self.accuracy)
-            self.model.save(saveFolder + '/model_{}_.h5'.format(self.accuracy))
+            self.model.save(saveFolder + '/model_{}_{}.h5'.format(self.accuracy,
+                                                                  modelNumber))
 
     @classmethod
     def load(cls, loadFile):
@@ -169,7 +172,7 @@ class Geoguessr:
         model = tf.keras.models.load_model(loadFile)
         modelFile = loadFile.split('/')[-1]
         accuracy = float(modelFile.split('_')[1])
-        print("Loaded model accuracy {}".format(accuracy))
+        print("Loaded model loss {}".format(accuracy))
         return cls(model=model, accuracy=accuracy)
     
     def haversine(self, lati1, long1, lati2, long2):
@@ -198,7 +201,6 @@ class Geoguessr:
         return h, [lati1, long1], [lati2, long2]
     
     def evaluate(self, imgFiles, dataDir, ployGrid, checkPoint=50):
-        inputShape = self.model.layers[0].input_shape[2:4]
         dists = []
         ln = len(imgFiles)
         for idx,(xx,yy) in enumerate(self.dataGen(imgFiles, dataDir, batchSize=1, infinite=False)):
