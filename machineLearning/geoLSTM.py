@@ -282,7 +282,8 @@ class Geoguessr:
         eg: <gridNo>+<lat,long>
         eg: 60+48.4271513,-110.5611851
         dataDir: Directory that stores combined image files eg: "/dataCombinedSamples/"
-        polyGrid: file that contains split polygon file of USA eg: "infoExtraction/usaPolyGrid.pkl"
+        polyGrid: List of polygons that contain make up the USA split into grids.
+                  It can be loaded from eg: "infoExtraction/usaPolyGrid.pkl"
         checkPoint: report progress
         '''
         dists = []
@@ -304,7 +305,8 @@ class Geoguessr:
         # <gridNo>+<lat,long>
         # 60+48.4271513,-110.5611851
         dataDir: Directory that stores combined image files eg: "/dataCombinedSamples/"
-        polyGrid: file that contains split polygon file of USA eg: "infoExtraction/usaPolyGrid.pkl"
+        polyGrid: List of polygons that contain make up the USA split into grids.
+                  It can be loaded from eg: "infoExtraction/usaPolyGrid.pkl"
         '''
         # read image triplets from single file
         xx,yy = self.readData([imgFile], dataDir)
